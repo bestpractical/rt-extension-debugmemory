@@ -116,6 +116,8 @@ sub RT::Interface::Web::Handler::PSGIApp {
                 my $res    = $app->($env);
                 my $after  = _get_rss();
 
+                $i++;
+
                 RT->Logger->debug("MEM DEBUG - $$\[$i]: before=$before after=$after last="
                     . (defined $last ? $last : 'undef')
                     . " delta=" . ($after - $before)
@@ -128,7 +130,6 @@ sub RT::Interface::Web::Handler::PSGIApp {
                     RT->Logger->warning("MEM - $$\[$i]: ($rss) > $lastreq");
                 }
 
-                $i++;
                 $last = $after;
                 $lastreq = $env->{REQUEST_URI};
 
