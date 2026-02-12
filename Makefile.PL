@@ -1,12 +1,11 @@
+use lib '.';
 use inc::Module::Install;
 
-
 RTx 'RT-Extension-DebugMemory';
-all_from 'lib/RT/Extension/DebugMemory.pm';
-readme_from 'lib/RT/Extension/DebugMemory.pm';
+repository('https://github.com/bestpractical/rt-extension-debugmemory');
 license  'gplv2';
 
-requires 'Plack::Middleware::GTop::ProcMem';
+requires 'Proc::ProcessTable';
 
-sign;
-WriteAll;
+sign();
+WriteAll();
