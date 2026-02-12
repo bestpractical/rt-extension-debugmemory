@@ -63,7 +63,7 @@ module to read the RSS (Resident Set Size) of the current process.
 
 =head1 AUTHOR
 
-Alex Vandiver <alexmv@bestpractical.com>
+Best Practical Solutions, LLC <modules@bestpractical.com>
 
 =head1 BUGS
 

@@ -45,7 +45,7 @@ USAGE
     to read the RSS (Resident Set Size) of the current process.
 
 AUTHOR
-    Alex Vandiver <alexmv@bestpractical.com>
+    Best Practical Solutions, LLC <modules@bestpractical.com>
 
 BUGS
     All bugs should be reported via
