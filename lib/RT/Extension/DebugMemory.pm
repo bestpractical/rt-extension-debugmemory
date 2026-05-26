@@ -83,9 +83,15 @@ This is free software, licensed under:
 =cut
 
 our $APP;
+our $ORIG_PSGIAPP;
 BEGIN {
     require RT::Interface::Web::Handler;
-    $APP = RT::Interface::Web::Handler->PSGIApp;
+    # Capture the original PSGIApp sub reference, not its result. Calling
+    # PSGIApp here would build a real Mason handler at module load time and
+    # create $RT::MasonDataDir/obj as whatever user is loading us (e.g. root,
+    # for cron jobs that load all plugins via RT::Init). Deferring the call
+    # until something actually requests PSGIApp keeps CLI tools clean.
+    $ORIG_PSGIAPP = \&RT::Interface::Web::Handler::PSGIApp;
 }
 
 use Plack::Builder;
@@ -103,6 +109,8 @@ sub _get_rss {
 }
 
 sub RT::Interface::Web::Handler::PSGIApp {
+    my $self = shift;
+    $APP //= $ORIG_PSGIAPP->($self, @_);
     my $i = 0;
     my $last;
     my $lastreq;
