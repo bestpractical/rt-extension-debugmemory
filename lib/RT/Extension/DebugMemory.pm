@@ -2,7 +2,7 @@ use strict;
 use warnings;
 package RT::Extension::DebugMemory;
 
-our $VERSION = '0.03';
+our $VERSION = '0.05';
 
 =head1 NAME
 
@@ -20,13 +20,13 @@ RT-Extension-DebugMemory - Warns of memory growth
 
 May need root permissions
 
-=item Edit your /opt/rt4/etc/RT_SiteConfig.pm
+=item Edit your F</opt/rt6/etc/RT_SiteConfig.pm>
 
 Add this line:
 
-    Set(@Plugins, qw(RT::Extension::DebugMemory));
+    Plugin('RT::Extension::DebugMemory');
 
-or add C<RT::Extension::DebugMemory> to your existing C<@Plugins> line.
+or add C<RT::Extension::DebugMemory> to your existing C<Plugin> line.
 
 =item Restart your webserver
 
@@ -58,12 +58,12 @@ logged at the WARN level, as follows:
      "|" means during the request            |
                                      Request URI
 
-The size of the process is monitored using the L<GTop> tool, namely the
-L<GTop::ProcMem> package.
+The size of the process is monitored using the L<Proc::ProcessTable>
+module to read the RSS (Resident Set Size) of the current process.
 
 =head1 AUTHOR
 
-Alex Vandiver <alexmv@bestpractical.com>
+Best Practical Solutions, LLC <modules@bestpractical.com>
 
 =head1 BUGS
 
@@ -74,7 +74,7 @@ or L<bug-RT-Extension-DebugMemory@rt.cpan.org>.
 
 =head1 LICENSE AND COPYRIGHT
 
-This software is Copyright (c) 2012 by Best Practical Solutions, LLC
+This software is Copyright (c) 2012-2026 by Best Practical Solutions, LLC
 
 This is free software, licensed under:
 
@@ -83,44 +83,71 @@ This is free software, licensed under:
 =cut
 
 our $APP;
+our $ORIG_PSGIAPP;
 BEGIN {
     require RT::Interface::Web::Handler;
-    $APP = RT::Interface::Web::Handler->PSGIApp;
+    # Capture the original PSGIApp sub reference, not its result. Calling
+    # PSGIApp here would build a real Mason handler at module load time and
+    # create $RT::MasonDataDir/obj as whatever user is loading us (e.g. root,
+    # for cron jobs that load all plugins via RT::Init). Deferring the call
+    # until something actually requests PSGIApp keeps CLI tools clean.
+    $ORIG_PSGIAPP = \&RT::Interface::Web::Handler::PSGIApp;
 }
 
 use Plack::Builder;
 no warnings 'redefine';
 
-# GTop uses the loaded-ness of threads.pm to determine if it is in a
-# multi-threaded environment.
-if ( eval {require Apache2::MPM; Apache2::MPM->is_threaded} ) {
-    require threads;
+sub _get_rss {
+    require Proc::ProcessTable;
+    my $t = Proc::ProcessTable->new;
+    for my $p (@{ $t->table }) {
+        next unless $p->pid == $$;
+        # On Darwin, Proc::ProcessTable returns RSS in KB; normalize to bytes
+        return $^O eq 'darwin' ? $p->rss * 1024 : $p->rss;
+    }
+    return 0;
 }
 
 sub RT::Interface::Web::Handler::PSGIApp {
+    my $self = shift;
+    $APP //= $ORIG_PSGIAPP->($self, @_);
     my $i = 0;
     my $last;
     my $lastreq;
     builder {
-        enable 'GTop::ProcMem', callback => sub {
-            my ($env, $res, $before, $after) = @_;
-            # $before, $after isa GTop::ProcMem
+        enable sub {
+            my $app = shift;
+            sub {
+                my ($env) = @_;
 
-            if (defined $last and $before->rss != $last) {
-                # Growth between the end of last request and start of
-                # this one is the fault of the previous request
-                my $rss = ( ($before->rss - $last) / 1024) . "K";
-                RT->Logger->warning("MEM - $$\[$i]: ($rss) > $lastreq");
-            }
+                my $before = _get_rss();
+                my $res    = $app->($env);
+                my $after  = _get_rss();
 
-            $i++;
-            $last = $after->rss;
-            $lastreq = $env->{REQUEST_URI};
+                $i++;
 
-            return unless $after->rss != $before->rss;
+                RT->Logger->debug("MEM DEBUG - $$\[$i]: before=$before after=$after last="
+                    . (defined $last ? $last : 'undef')
+                    . " delta=" . ($after - $before)
+                    . " " . $env->{REQUEST_URI});
 
-            my $rss = ( ($after->rss - $before->rss) / 1024) . "K";
-            RT->Logger->warning("MEM - $$\[$i]: ($rss) | ".$env->{REQUEST_URI});
+                if (defined $last and $before != $last) {
+                    # Growth between the end of last request and start of
+                    # this one is the fault of the previous request
+                    my $rss = ( ($before - $last) / 1024) . "K";
+                    RT->Logger->warning("MEM - $$\[$i]: ($rss) > $lastreq");
+                }
+
+                $last = $after;
+                $lastreq = $env->{REQUEST_URI};
+
+                return $res unless $after != $before;
+
+                my $rss = ( ($after - $before) / 1024) . "K";
+                RT->Logger->warning("MEM - $$\[$i]: ($rss) | ".$env->{REQUEST_URI});
+
+                return $res;
+            };
         };
         $APP;
     };

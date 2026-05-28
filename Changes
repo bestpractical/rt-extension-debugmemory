@@ -1,0 +1,11 @@
+Revision history for RT-Extension-DebugMemory
+
+0.05 2026-05-28
+
+ - Defer PSGIApp construction to avoid Mason cache creation at module load
+ - Increment the counter only once for each request
+
+0.04 2026-02-12
+
+ - Convert from GTop and Plack::Middleware::GTop::ProcMem wrapper to using Proc::ProcessTable
+   directly in the module, reducing dependencies.

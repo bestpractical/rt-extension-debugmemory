@@ -1,0 +1,62 @@
+NAME
+    RT-Extension-DebugMemory - Warns of memory growth
+
+INSTALLATION
+    perl Makefile.PL
+    make
+    make install
+        May need root permissions
+
+    Edit your /opt/rt6/etc/RT_SiteConfig.pm
+        Add this line:
+
+            Plugin('RT::Extension::DebugMemory');
+
+        or add RT::Extension::DebugMemory to your existing Plugin line.
+
+    Restart your webserver
+
+USAGE
+    Requests which trigger changes in the RSS size of the process will be
+    logged at the WARN level, as follows:
+
+        [warning]: MEM - 872[1]: (596K) | /
+        [warning]: MEM - 872[1]: (4220K) > /
+        [warning]: MEM - 872[2]: (160K) | /NoAuth/Login.html
+        [warning]: MEM - 872[2]: (684K) > /NoAuth/Login.html
+        [warning]: MEM - 872[3]: (2900K) > /
+        [warning]: MEM - 872[4]: (4276K) > /Ticket/Display.html?id=1
+        [warning]: MEM - 872[5]: (68K) > /Ticket/Display.html?id=1
+        [warning]: MEM - 872[6]: (72K) > /Ticket/Display.html?id=1
+        [warning]: MEM - 872[7]: (16K) > /Ticket/Display.html?id=1
+                          ^  ^     ^   ^         ^
+                          |  |     |   |         |
+                         PID |     |   |         |
+                             |     |   |         |
+                  Request number   |   |         |
+                                   |   |         |
+                      RSS size change  |         |
+                                       |         |
+         ">" means post-cleanup of request       |
+         "|" means during the request            |
+                                         Request URI
+
+    The size of the process is monitored using the Proc::ProcessTable module
+    to read the RSS (Resident Set Size) of the current process.
+
+AUTHOR
+    Best Practical Solutions, LLC <modules@bestpractical.com>
+
+BUGS
+    All bugs should be reported via
+    <http://rt.cpan.org/Public/Dist/Display.html?Name=RT-Extension-DebugMemo
+    ry> or bug-RT-Extension-DebugMemory@rt.cpan.org.
+
+LICENSE AND COPYRIGHT
+    This software is Copyright (c) 2012-2026 by Best Practical Solutions,
+    LLC
+
+    This is free software, licensed under:
+
+      The GNU General Public License, Version 2, June 1991
+
