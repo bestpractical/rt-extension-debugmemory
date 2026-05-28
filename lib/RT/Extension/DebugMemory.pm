@@ -74,7 +74,7 @@ or L<bug-RT-Extension-DebugMemory@rt.cpan.org>.
 
 =head1 LICENSE AND COPYRIGHT
 
-This software is Copyright (c) 2012-2025 by Best Practical Solutions, LLC
+This software is Copyright (c) 2012-2026 by Best Practical Solutions, LLC
 
 This is free software, licensed under:
 
